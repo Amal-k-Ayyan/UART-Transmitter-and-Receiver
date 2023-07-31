@@ -1,0 +1,54 @@
+`timescale 1ns/10ps
+// Receiver clock frequency  = 50MHz
+// Baud Rate = 19200
+module uart_Rx_tb;
+  reg Rx_clk = 0; // Clock to Rx
+  reg Rx_in = 1; // Serial input to Rx
+  wire [7:0]Rx_out; // Output of Rx will be a vector of 8-bit width
+  
+  parameter clk_period = 20; // period of transmitter clock
+  parameter bit_period = 52083; // time in ns that each bit should be present
+  
+  // Creating a TASK to serialize data.
+  task uart_data_transmit;
+    input [7:0]data;
+    integer i;
+    begin
+    Rx_in = 0; //send start bit
+    #(bit_period);
+    
+    for (i=0; i<8; i=i+1)
+        begin
+          Rx_in <= data[i];
+          #(bit_period);
+        end
+    
+    Rx_in <= 1; //send stop bit
+    #(bit_period);
+    end
+  endtask
+  
+  UART_Rx uut(Rx_out,Rx_in,Rx_clk); // instantiaztion of module
+  
+  always #(clk_period/2) Rx_clk = ~Rx_clk; // clock for Rx with 50% duty cycle
+  
+  initial
+    begin
+      uart_data_transmit(8'h63);
+      
+      
+      @(posedge Rx_clk); //Check if correct data is being received
+      if (Rx_out == 8'h63)
+        $display("Correct data received");
+      else
+        $display("Wrong data received");
+    $finish();
+    end
+  
+  initial 
+  begin
+    $dumpfile("dump.vcd");
+    $dumpvars;
+  end
+endmodule
+  
